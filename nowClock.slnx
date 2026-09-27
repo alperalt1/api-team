@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="nowClock.API/nowClock.API.csproj" />
+  <Project Path="nowClock.Application/nowClock.Application.csproj" />
+  <Project Path="nowClock.Domain/nowClock.Domain.csproj" />
+  <Project Path="nowClock.Infrastructure/nowClock.Infrastructure.csproj" />
+</Solution>

@@ -1,0 +1,102 @@
+@nowClock.API_HostAddress = http://localhost:5110
+
+### 1. Registrar Usuario con Cédula y Nombre
+POST {{nowClock.API_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "cedula": "1009876543",
+  "nombre": "Carlos Mendoza",
+  "email": "carlos.mendoza@ejemplo.com",
+  "password": "Password123!",
+  "phoneNumber": "+573001234567"
+}
+
+### 2. Iniciar Sesión con Cédula
+# @name login
+POST {{nowClock.API_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "cedula": "1009876543",
+  "password": "Password123!"
+}
+
+### Guardar tokens y estado de login
+@authToken = {{login.response.body.data.token}}
+@refreshToken = {{login.response.body.data.refreshToken}}
+@twoFactorToken = {{login.response.body.data.twoFactorToken}}
+
+### 3. Refrescar Token
+POST {{nowClock.API_HostAddress}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "token": "{{authToken}}",
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 4. Consultar Estado Actual de 2FA
+GET {{nowClock.API_HostAddress}}/api/auth/2fa-status
+Authorization: Bearer {{authToken}}
+
+### 5. Paso 1: Solicitar código de prueba o QR (Email, Phone o Authenticator)
+# Al solicitar un método, el sistema envía un código para verificar que realmente le llegan antes de activarlo
+POST {{nowClock.API_HostAddress}}/api/auth/2fa-send-code
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "provider": "Email"
+}
+
+### 6. Paso 2: Confirmar código recibido y activar/actualizar método preferido
+# Se ingresa el código recibido en el paso 1 para comprobar que funciona y activar el método
+POST {{nowClock.API_HostAddress}}/api/auth/2fa-preference
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "provider": "Email",
+  "code": "123456"
+}
+
+### 7. Deshabilitar 2FA (Requiere código del método 2FA activo)
+POST {{nowClock.API_HostAddress}}/api/auth/2fa-disable
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "code": "123456"
+}
+
+### 8. Verificar 2FA tras inicio de sesión (Usa el TwoFactorToken emitido en el login)
+POST {{nowClock.API_HostAddress}}/api/auth/verify-2fa
+Content-Type: application/json
+
+{
+  "twoFactorToken": "{{twoFactorToken}}",
+  "code": "123456"
+}
+
+### 9. Olvidé mi contraseña (Solicitar con Cédula o Correo)
+POST {{nowClock.API_HostAddress}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "cedulaOrEmail": "1009876543"
+}
+
+### 10. Restablecer contraseña con token
+POST {{nowClock.API_HostAddress}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "cedulaOrEmail": "1009876543",
+  "token": "PEGA_AQUI_EL_TOKEN_DEL_LOG",
+  "newPassword": "NewPassword123!"
+}
+
+### 11. Cerrar sesión (Revocar Refresh Token)
+POST {{nowClock.API_HostAddress}}/api/auth/logout
+Authorization: Bearer {{authToken}}
