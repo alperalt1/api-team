@@ -15,6 +15,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using nowClock.Application.Interfaces.Mail;
 using ResetPasswordRequest = nowClock.Application.DTO.Auth.ResetPasswordRequest;
 
 namespace nowClock.Infrastructure.Services.Auth
@@ -25,18 +26,22 @@ namespace nowClock.Infrastructure.Services.Auth
         private readonly IConfiguration _configuration;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<AuthService> _logger;
+        private readonly IEmailService _emailService;
 
         #region Constructor
         public AuthService(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
             SignInManager<ApplicationUser> signInManager,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IEmailService emailService
+            )
         {
             _userManager = userManager;
             _configuration = configuration;
             _signInManager = signInManager;
             _logger = logger;
+            _emailService = emailService;
         }
         #endregion
 
@@ -69,6 +74,9 @@ namespace nowClock.Infrastructure.Services.Auth
             {
                 UserName = req.Cedula,
                 Cedula = req.Cedula,
+                Apellido = req.Apellido,
+                Direccion = req.Direccion,
+                FechaNacimiento = req.FechaNacimiento,
                 Nombre = req.Nombre,
                 Email = req.Email,
                 PhoneNumber = req.PhoneNumber
@@ -220,10 +228,19 @@ namespace nowClock.Infrastructure.Services.Auth
                 return new ApiResponse<string>("Si el usuario está registrado, se enviarán las instrucciones de recuperación.", "Solicitud procesada");
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var code = await _userManager.GenerateUserTokenAsync(
+                user, 
+                TokenOptions.DefaultEmailProvider, 
+                "ResetPassword");
+            _logger.LogInformation("Código de restablecimiento generado para Cédula: {Cedula} / Email: {Email}: {Code}", user.Cedula, user.Email, code);
+            
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                await _emailService.SendPasswordResetCodeAsync(user.Email, code);
+            }
 
             // Se registra en los logs del servidor para trazabilidad y pruebas en desarrollo
-            _logger.LogInformation("Token de restablecimiento de contraseña generado para Cédula: {Cedula} / Email: {Email}: {Token}", user.Cedula, user.Email, token);
+            _logger.LogInformation("Token de restablecimiento de contraseña generado para Cédula: {Cedula} / Email: {Email}: {Token}", user.Cedula, user.Email, code);
 
             return new ApiResponse<string>("Si el usuario está registrado, se enviarán las instrucciones de recuperación al canal configurado.", "Solicitud procesada");
         }
@@ -240,13 +257,25 @@ namespace nowClock.Infrastructure.Services.Auth
                 ?? await _userManager.FindByEmailAsync(req.CedulaOrEmail);
 
             if (user == null) return new ApiResponse<bool>("Usuario no encontrado.");
+            
+            var isCodeValid = await _userManager.VerifyUserTokenAsync(
+                user, 
+                TokenOptions.DefaultEmailProvider, 
+                "ResetPassword", 
+                req.Token); // req.Token contiene el código de 6 dígitos
 
-            var result = await _userManager.ResetPasswordAsync(user, req.Token, req.NewPassword);
+            if (!isCodeValid)
+            {
+                return new ApiResponse<bool>("El código de recuperación es inválido o ha expirado.");
+            }
+            
+            var internalToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, internalToken, req.NewPassword);
 
             if (!result.Succeeded)
             {
                 var errors = result.Errors.Select(e => e.Description).ToList();
-                return new ApiResponse<bool>("Token inválido o expirado.", errors);
+                return new ApiResponse<bool>("No se pudo restablecer la contraseña.", errors);
             }
 
             // Invalidar el refresh token existente para forzar re-autenticación

@@ -10,6 +10,8 @@ using nowClock.Infrastructure.Identity;
 using nowClock.Infrastructure.Services.Auth;
 using System;
 using System.Text;
+using nowClock.Application.Interfaces.Mail;
+using nowClock.Infrastructure.Services.Mail;
 
 namespace nowClock.Infrastructure
 {
@@ -48,6 +50,8 @@ namespace nowClock.Infrastructure
                 .AddDefaultTokenProviders();
 
             services.AddSingleton<IDbConnectionFactory>(new NpgsqlConnectionFactory(conexion));
+            services.Configure<SmtpSettings>(configuration.GetSection("Resent"));
+            services.AddTransient<IEmailService, EmailService>();
             services.AddScoped<IAuthService, AuthService>();
 
             var jwtSettings = configuration.GetSection("JwtSettings");
