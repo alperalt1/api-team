@@ -7,7 +7,7 @@ namespace nowClock.Application.Interfaces.Auth
     public interface IAuthService
     {
         Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterDto req);
-        Task<ApiResponse<AuthResponse>> LoginAsync(LoginDto req);
+        Task<ApiResponse<AuthLoginResponse>> LoginAsync(LoginDto req);
         Task<ApiResponse<AuthResponse>> RefreshTokenAsync(TokenRequest req);
         Task<ApiResponse<string>> ForgotPasswordAsync(string email);
         Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequest req);

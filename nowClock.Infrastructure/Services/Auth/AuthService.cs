@@ -105,11 +105,11 @@ namespace nowClock.Infrastructure.Services.Auth
             return new ApiResponse<AuthResponse>(authData, "Usuario registrado exitosamente");
         }
 
-        public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginDto req)
+        public async Task<ApiResponse<AuthLoginResponse>> LoginAsync(LoginDto req)
         {
             if (string.IsNullOrWhiteSpace(req.Cedula) || string.IsNullOrWhiteSpace(req.Password))
             {
-                return new ApiResponse<AuthResponse>("La cédula y la contraseña son obligatorias.");
+                return new ApiResponse<AuthLoginResponse>("La cédula y la contraseña son obligatorias.");
             }
 
             // Buscar usuario por Cédula (UserName)
@@ -118,7 +118,7 @@ namespace nowClock.Infrastructure.Services.Auth
 
             if (user == null)
             {
-                return new ApiResponse<AuthResponse>("Cédula o contraseña incorrectas.");
+                return new ApiResponse<AuthLoginResponse>("Cédula o contraseña incorrectas.");
             }
 
             // Verificar si la cuenta se encuentra bloqueada por fuerza bruta
@@ -129,7 +129,7 @@ namespace nowClock.Infrastructure.Services.Auth
                     ? Math.Max(1, (int)(lockoutEnd.Value - DateTimeOffset.UtcNow).TotalMinutes) 
                     : 15;
 
-                return new ApiResponse<AuthResponse>($"La cuenta está temporalmente bloqueada debido a múltiples intentos fallidos. Intente nuevamente en {minutesRemaining} minutos.");
+                return new ApiResponse<AuthLoginResponse>($"La cuenta está temporalmente bloqueada debido a múltiples intentos fallidos. Intente nuevamente en {minutesRemaining} minutos.");
             }
 
             // Validar contraseña con lockoutOnFailure = true para protección contra ataques de fuerza bruta
@@ -138,30 +138,30 @@ namespace nowClock.Infrastructure.Services.Auth
             if (isPasswordValid.IsLockedOut)
             {
                 _logger.LogWarning("Cuenta bloqueada por múltiples intentos fallidos para la cédula: {Cedula}", user.Cedula);
-                return new ApiResponse<AuthResponse>("La cuenta ha sido bloqueada temporalmente por exceder el número máximo de intentos fallidos.");
+                return new ApiResponse<AuthLoginResponse>("La cuenta ha sido bloqueada temporalmente por exceder el número máximo de intentos fallidos.");
             }
 
             if (!isPasswordValid.Succeeded)
             {
-                return new ApiResponse<AuthResponse>("Cédula o contraseña incorrectas.");
+                return new ApiResponse<AuthLoginResponse>("Cédula o contraseña incorrectas.");
             }
 
             // Resetear contador de accesos fallidos al superar la contraseña
             await _userManager.ResetAccessFailedCountAsync(user);
 
             // Flujo con 2FA habilitado
-            if (await _userManager.GetTwoFactorEnabledAsync(user))
-            {
-                var preferredProvider = user.Preferred2FAProvider ?? _userManager.Options.Tokens.AuthenticatorTokenProvider;
-                var twoFactorSessionToken = GenerateTwoFactorSessionToken(user);
-
-                return new ApiResponse<AuthResponse>(new AuthResponse
-                {
-                    RequiresTwoFactor = true,
-                    PreferredProvider = preferredProvider,
-                    TwoFactorToken = twoFactorSessionToken
-                }, "Se requiere autenticación de dos factores para completar el inicio de sesión.");
-            }
+            // if (await _userManager.GetTwoFactorEnabledAsync(user))
+            // {
+            //     var preferredProvider = user.Preferred2FAProvider ?? _userManager.Options.Tokens.AuthenticatorTokenProvider;
+            //     var twoFactorSessionToken = GenerateTwoFactorSessionToken(user);
+            //
+            //     return new ApiResponse<AuthLoginResponse>(new AuthLoginResponse
+            //     {
+            //         RequiresTwoFactor = true,
+            //         PreferredProvider = preferredProvider,
+            //         TwoFactorToken = twoFactorSessionToken
+            //     }, "Se requiere autenticación de dos factores para completar el inicio de sesión.");
+            // }
 
             var token = GenerateJwtToken(user);
             var refreshToken = GenerateRefreshToken();
@@ -170,13 +170,17 @@ namespace nowClock.Infrastructure.Services.Auth
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
             await _userManager.UpdateAsync(user);
 
-            var authData = new AuthResponse
+            var authData = new AuthLoginResponse
             {
                 Token = token,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
+                Nombre = user.Nombre,
+                Apellido = user.Apellido,
+                Email = user.Email,
+                Cedula = user.Cedula,
             };
 
-            return new ApiResponse<AuthResponse>(authData, "Autenticación exitosa.");
+            return new ApiResponse<AuthLoginResponse>(authData, "Autenticación exitosa.");
         }
 
         public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(TokenRequest req)

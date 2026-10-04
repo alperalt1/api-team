@@ -11,6 +11,19 @@ namespace nowClock.Application.DTO.Auth
         public string? TwoFactorToken { get; set; }
     }
 
+    public class AuthLoginResponse
+    {
+        public string Token { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
+        public bool RequiresTwoFactor { get; set; } = false;
+        public string? PreferredProvider { get; set; }
+        public string? TwoFactorToken { get; set; }
+        public string Nombre {get; set;} = string.Empty;
+        public string Apellido {get; set;} = string.Empty;
+        public string Email {get; set;} = string.Empty;
+        public string Cedula {get; set;} = string.Empty;
+    }
+
     public class Update2FAPreferenceDto
     {
         public string Provider { get; set; } = string.Empty; // "Authenticator", "Email", "Phone"
