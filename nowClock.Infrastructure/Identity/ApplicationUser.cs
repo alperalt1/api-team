@@ -11,6 +11,7 @@ namespace nowClock.Infrastructure.Identity
         public string? FechaNacimiento { get; set; }
         public string? Direccion { get; set; }
         public string? RefreshToken { get; set; }
+        public UserAccess Access { get; set; } = new();
         public DateTime? RefreshTokenExpiryTime { get; set; }
         public string? Preferred2FAProvider { get; set; }
     }

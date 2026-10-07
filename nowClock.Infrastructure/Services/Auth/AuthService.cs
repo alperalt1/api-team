@@ -70,6 +70,17 @@ namespace nowClock.Infrastructure.Services.Auth
                 }
             }
 
+            var platform = new PlatformAccess
+            {
+                Mobile = false,
+                Web = false,
+            };
+
+            var access = new UserAccess
+            {
+                Platforms = platform,
+            };
+            
             var user = new ApplicationUser
             {
                 UserName = req.Cedula,
@@ -78,6 +89,7 @@ namespace nowClock.Infrastructure.Services.Auth
                 Direccion = req.Direccion,
                 FechaNacimiento = req.FechaNacimiento,
                 Nombre = req.Nombre,
+                Access = access,
                 Email = req.Email,
                 PhoneNumber = req.PhoneNumber
             };
@@ -140,12 +152,12 @@ namespace nowClock.Infrastructure.Services.Auth
                 _logger.LogWarning("Cuenta bloqueada por múltiples intentos fallidos para la cédula: {Cedula}", user.Cedula);
                 return new ApiResponse<AuthLoginResponse>("La cuenta ha sido bloqueada temporalmente por exceder el número máximo de intentos fallidos.");
             }
-
+            
             if (!isPasswordValid.Succeeded)
             {
                 return new ApiResponse<AuthLoginResponse>("Cédula o contraseña incorrectas.");
             }
-
+            
             // Resetear contador de accesos fallidos al superar la contraseña
             await _userManager.ResetAccessFailedCountAsync(user);
 
@@ -162,6 +174,16 @@ namespace nowClock.Infrastructure.Services.Auth
             //         TwoFactorToken = twoFactorSessionToken
             //     }, "Se requiere autenticación de dos factores para completar el inicio de sesión.");
             // }
+            
+            if (req.ClientPlatform.ToLower() == "mobile" && !user.Access.Platforms.Mobile)
+            {
+                return new ApiResponse<AuthLoginResponse>("No tienes permiso para acceder a la aplicación móvil.");
+            }
+
+            if (req.ClientPlatform.ToLower() == "web" && !user.Access.Platforms.Web)
+            {
+                return new ApiResponse<AuthLoginResponse>("No tienes permiso para acceder al portal web.");
+            }
 
             var token = GenerateJwtToken(user);
             var refreshToken = GenerateRefreshToken();
@@ -662,7 +684,9 @@ namespace nowClock.Infrastructure.Services.Auth
                 new Claim("nombre", user.Nombre ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("can_access_mobile", user.Access.Platforms.Mobile.ToString().ToLower()),
+                new Claim("can_access_web", user.Access.Platforms.Web.ToString().ToLower())
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

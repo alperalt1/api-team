@@ -297,6 +297,47 @@ namespace nowClock.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
+
+            modelBuilder.Entity("nowClock.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.OwnsOne("nowClock.Infrastructure.Identity.UserAccess", "Access", b1 =>
+                        {
+                            b1.Property<string>("ApplicationUserId");
+
+                            b1.HasKey("ApplicationUserId");
+
+                            b1.ToTable("AspNetUsers");
+
+                            b1
+                                .ToJson("Access")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ApplicationUserId");
+
+                            b1.OwnsOne("nowClock.Infrastructure.Identity.PlatformAccess", "Platforms", b2 =>
+                                {
+                                    b2.Property<string>("UserAccessApplicationUserId");
+
+                                    b2.Property<bool>("Mobile");
+
+                                    b2.Property<bool>("Web");
+
+                                    b2.HasKey("UserAccessApplicationUserId");
+
+                                    b2.ToTable("AspNetUsers");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("UserAccessApplicationUserId");
+                                });
+
+                            b1.Navigation("Platforms")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Access")
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

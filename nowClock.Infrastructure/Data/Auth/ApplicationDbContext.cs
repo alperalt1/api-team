@@ -17,6 +17,13 @@ namespace nowClock.Infrastructure.Data.Auth
                 entity.Property(u => u.Cedula).HasMaxLength(30).IsRequired();
                 entity.HasIndex(u => u.Cedula).IsUnique();
             });
+            
+            builder.Entity<ApplicationUser>()
+                .OwnsOne(u => u.Access, accessBuilder =>
+                {
+                    accessBuilder.ToJson();
+                    accessBuilder.OwnsOne(a => a.Platforms);
+                });
         }
     }
 }

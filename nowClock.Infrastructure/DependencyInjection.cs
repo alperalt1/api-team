@@ -11,7 +11,9 @@ using nowClock.Infrastructure.Services.Auth;
 using System;
 using System.Text;
 using nowClock.Application.Interfaces.Mail;
+using nowClock.Application.Interfaces.Sync;
 using nowClock.Infrastructure.Services.Mail;
+using nowClock.Infrastructure.Services.Sync;
 
 namespace nowClock.Infrastructure
 {
@@ -52,6 +54,7 @@ namespace nowClock.Infrastructure
             services.AddSingleton<IDbConnectionFactory>(new NpgsqlConnectionFactory(conexion));
             services.Configure<SmtpSettings>(configuration.GetSection("Resent"));
             services.AddTransient<IEmailService, EmailService>();
+            services.AddTransient<ISyncService, SyncService>();
             services.AddScoped<IAuthService, AuthService>();
 
             var jwtSettings = configuration.GetSection("JwtSettings");
